@@ -3,11 +3,14 @@
         @drop.prevent="onDrop"
         @dragover.stop.prevent
         @dragenter.stop.prevent
-        @dragstart.stop.prevent>
-    <div class="player-background" :style="{ backgroundImage: `url(${albumArtData})`}" />
+        @dragstart.stop.prevent
+        draggable="true"
+        @keypress="trackListKeyHandler">
+    <div v-if="playingTrackIndex != -1" class="player-background" :style="{ backgroundImage: `url(${albumArtData})`}" />
+    <div v-else class="player-background" style="background-color: darkgrey;" />
     <div class="flex justify-center">
       <div class="album-art-container">
-        <div v-if="selectedTrackIndex != -1 && tracks[selectedTrackIndex].album_art?.data">
+        <div v-if="playingTrackIndex != -1 && tracks[playingTrackIndex].album_art?.data">
           <img :src="albumArtData" class="album-art" />
         </div>
         <div v-else>
@@ -16,6 +19,11 @@
           </div>
         </div>
       </div>
+    </div>
+    <div v-if="playingTrackIndex != -1" class="track-info">
+      <div class="song">{{ tracks[playingTrackIndex].title }}</div>
+      <div class="album">{{ tracks[playingTrackIndex].album }}</div>
+      <div class="artist">{{ tracks[playingTrackIndex].artist }}</div>
     </div>
     <div class="controls">
       <img src="icons/repeat.svg" class="control" />
@@ -28,8 +36,11 @@
       Add Remove
 oop    </div> -->
     <div class="track-list">
-      <div v-for="(track, index) of tracks" :key="track.path" @click="selectTrack(index)" class="w-100 track" :class="{ selected: index == selectedTrackIndex}">
+      <div v-if="tracks && tracks.length > 0" v-for="(track, index) of tracks" :key="track.path" @click="selectTrack(index)" @dblclick="playTrack(index)" class="w-100 track" :class="{ selected: index == selectedTrackIndex}">
         {{ track.title }} - {{ track.artist }} ({{ track.ext }})
+      </div>
+      <div v-else style="color: black">
+        No Tracks
       </div>
     </div>
   </div>
@@ -60,13 +71,14 @@ export default {
   data() {
     return {
       tracks: [] as Track[],
-      selectedTrackIndex: -1
+      selectedTrackIndex: -1,
+      playingTrackIndex: -1
     }
   },
   computed: {
     albumArtData() {
-      if(this.tracks && this.tracks.length > 0 && this.selectedTrackIndex > 0) {
-        return `data:${this.tracks[this.selectedTrackIndex].album_art.format};base64,${this.tracks[this.selectedTrackIndex].album_art.data.toString('base64')}`
+      if(this.tracks && this.tracks.length > 0 && this.playingTrackIndex >= 0) {
+        return `data:${this.tracks[this.playingTrackIndex].album_art.format};base64,${this.tracks[this.playingTrackIndex].album_art.data.toString('base64')}`
       }
       return ''
     },
@@ -76,16 +88,15 @@ export default {
   },
   methods: {
     onDrop(e : any) {
-      console.log('dropped')
-      console.log(e.dataTransfer)
-      console.log(e.dataTransfer?.files?.length)
       const pendingTracks : PendingTrack[] = []
       for(const file of e.dataTransfer.files) {
-        console.log(file)
         const { type, path } = file
         pendingTracks.push({ type, path })
       }
       this.processAddedTracks(pendingTracks)
+    },
+    trackListKeyHandler(e : KeyboardEvent) {
+      console.log(e)
     },
     getFileExt(path: string) {
       const periodIndex = path.lastIndexOf('.')
@@ -102,11 +113,8 @@ export default {
         } catch (e) {
           continue
         }
-        console.log(path)
         const { title, artist, album, picture } = metadata.common
         const { format: aa_format, data: aa_data } = picture?.[0] as any
-        // console.log(metadata)
-        // title, artist, album, album art
         this.tracks.push({
           type, path, ext,
           title: title || 'Unknown',
@@ -119,10 +127,13 @@ export default {
         })
       }
       if(this.selectedTrackIndex == -1
-          && this.tracks.length > 0) this.selectedTrackIndex = 0
+          && this.tracks.length > 0) this.selectTrack(0)
     },
     selectTrack(index: number) {
       this.selectedTrackIndex = index
+    },
+    playTrack(index: number) {
+      this.playingTrackIndex = index
     }
   }
 }
@@ -132,6 +143,7 @@ export default {
 body {
   margin: 20px;
   overflow: hidden;
+  -webkit-app-region: drag;
 }
 
 .player {
@@ -153,7 +165,7 @@ body {
 }
 
 .album-art-container {
-  margin: 50px;
+  margin: 50px 50px 0px 50px;
 }
 
 .aa-placeholder {
@@ -166,16 +178,43 @@ body {
 }
 
 .album-art {
-  box-shadow: -10px -10px 50px #333;
+  box-shadow: -10px -10px 45px 30px #333;
+  max-height: 600px;
+}
+
+.track-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+  margin-bottom: 15px;
+}
+
+.track-info .song {
+  font-size: 25px;
+  line-height: 30px;
+  font-weight: 400;
+}
+
+.track-info .album {
+  font-size: 20px;
+  line-height: 25px;
+  font-weight: 300;
+}
+
+.track-info .artist {
+  font-size: 20px;
+  line-height: 25px;
+  font-weight: 200;
 }
 
 .control {
-  height: 100%;
+  height: 50%;
   margin-right: 30px;
 }
 
 .big-control {
-  height: 150%;
+  height: 100%;
   margin-right: 30px;
 }
 
@@ -183,16 +222,16 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 30px;
+  height: 50px;
   margin: 0px 0px 20px 0px;
   filter: invert(100%) brightness(1000%);
 }
 
 .track-list {
   color: white;
-  background-blend-mode: hue;
-  border-radius: 20px;
   padding: 20px;
+
+  -webkit-app-region: no-drag;
 }
 
 .track {
@@ -200,6 +239,7 @@ body {
 }
 
 .selected {
-  background-color: #555;
+  background-color: black;
+  color: white;
 }
 </style>
