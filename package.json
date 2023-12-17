@@ -19,13 +19,12 @@
     }
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "GDK_BACKEND=x11 vite",
     "build": "vue-tsc --noEmit && vite build && electron-builder",
     "preview": "vite preview"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.3.3",
-    "electron": "^26.0.0",
     "electron-builder": "^24.6.3",
     "tree-kill": "^1.2.2",
     "typescript": "^5.1.6",
@@ -36,6 +35,8 @@
     "vue-tsc": "^1.8.8"
   },
   "dependencies": {
-    "music-metadata": "^7.14.0"
+    "electron": "^27.0.0",
+    "music-metadata": "^7.14.0",
+    "node-vibrant": "^3.2.1-alpha.1"
   }
 }

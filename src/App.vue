@@ -48,6 +48,7 @@ oop    </div> -->
 
 <script lang="ts">
 import { parseFile } from 'music-metadata'
+const Vibrant = require('node-vibrant')
 
 type PendingTrack = {
   path: string,
@@ -72,7 +73,8 @@ export default {
     return {
       tracks: [] as Track[],
       selectedTrackIndex: -1,
-      playingTrackIndex: -1
+      playingTrackIndex: -1,
+      domanantColor: '#333333'
     }
   },
   computed: {
@@ -129,11 +131,26 @@ export default {
       if(this.selectedTrackIndex == -1
           && this.tracks.length > 0) this.selectTrack(0)
     },
+    async setPlayerColors() {
+      if(this.tracks && this.tracks.length > 0 && this.playingTrackIndex >= 0) {
+        const aaData = this.tracks[this.playingTrackIndex].album_art.data.toString('base64')
+        const buffer = Buffer.from(aaData, 'base64');
+
+        const palette = await Vibrant.from(buffer).getPalette()
+        const dominantColor = palette.Vibrant.getHex();
+        console.log('determined dom color: ' + dominantColor)
+        this.domanantColor = dominantColor
+      } else {
+        console.log('no dom color')
+        this.domanantColor = '#333333'
+      }
+    },
     selectTrack(index: number) {
       this.selectedTrackIndex = index
     },
     playTrack(index: number) {
       this.playingTrackIndex = index
+      this.setPlayerColors()
     }
   }
 }
@@ -178,8 +195,9 @@ body {
 }
 
 .album-art {
-  box-shadow: -10px -10px 45px 30px #333;
+  box-shadow: 0px 0px 120px -40px v-bind(domanantColor);
   max-height: 600px;
+  margin-bottom: 20px;
 }
 
 .track-info {
@@ -187,7 +205,7 @@ body {
   flex-direction: column;
   align-items: center;
   color: white;
-  margin-bottom: 15px;
+  margin-bottom: 25px;
 }
 
 .track-info .song {
